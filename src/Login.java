@@ -43,8 +43,8 @@ public class Login extends JFrame implements ActionListener {
 		window.setPreferredSize(new Dimension(200, 100));
 		window.setBorder(new EtchedBorder(EtchedBorder.RAISED));
 		window.add(userNameL);
-		window.add(passwordL);
 		window.add(userNameTF);
+		window.add(passwordL);
 		window.add(passwordTF);
 		window.add(login);
 		window.add(register);
@@ -64,7 +64,7 @@ public class Login extends JFrame implements ActionListener {
 		String userName = userNameTF.getText();
 		String password = passwordTF.getText();
 		try {
-			query = "select custName, passWord from customers where custName = '" + userName + "';";
+			query = "select custName, passWord from CUSTOMERS where custName = '" + userName + "';";
 			rs = DBInterface.executeQuery(conn, query);
 			if(!rs.next()) {
 				JOptionPane.showMessageDialog(null, "用户名不存在", "哈哈", JOptionPane.ERROR_MESSAGE);
@@ -79,14 +79,10 @@ public class Login extends JFrame implements ActionListener {
 				}
 			}
 		} catch(SQLException e) {
-			System.out.println("数据库操作错误。");
+			System.out.println("登录时数据库操作错误。");
 			e.printStackTrace();
-		}
-		try {
-			conn.close();
-		} catch (SQLException e) {
-			System.out.println("数据库关闭错误。");
-			e.printStackTrace();
+		} finally {
+			DBInterface.closeConnection(conn);
 		}
 	}
 	

@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.*;
 import java.util.Properties;
 
@@ -10,7 +11,8 @@ public class DBInterface {
 
 	static {
 		try {
-			props.load(DBInterface.class.getResourceAsStream("db.config"));
+			InputStream in = DBInterface.class.getResourceAsStream("db.properties");
+			props.load(in);
 		} catch (IOException e) {
 			System.out.println("未找到配置文件。");
 			e.printStackTrace();
@@ -49,8 +51,6 @@ public class DBInterface {
 			System.out.println("数据库操作错误。");
 			e.printStackTrace();
 			throw new SQLException();    // ???
-		} finally {
-			stmt.close();
 		}
 		return rs;
 	}
@@ -65,8 +65,6 @@ public class DBInterface {
 			System.out.println("数据库操作错误。");
 			e.printStackTrace();
 			throw new SQLException();
-		} finally {
-			stmt.close();
 		}
 		return res;
 	}
