@@ -8,7 +8,7 @@ public class DBInterface {
 	private static String password = null;
 	private static Properties props = new Properties();
 
-	public DBInterface() {
+	static {
 		try {
 			props.load(DBInterface.class.getResourceAsStream("db.config"));
 		} catch (IOException e) {

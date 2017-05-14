@@ -1,17 +1,23 @@
 import java.sql.*;
 
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JButton;
 import javax.swing.JTextField;
 import javax.swing.JOptionPane;
+import javax.swing.border.EtchedBorder;
 
 public class Login extends JFrame implements ActionListener {
+	private JPanel window;
+	private JLabel userNameL, passwordL;
 	private JTextField userNameTF, passwordTF;
 	private JButton login, register;
 	public Login() {
@@ -23,6 +29,32 @@ public class Login extends JFrame implements ActionListener {
 		Container cp = getContentPane();
 		FlowLayout layout = new FlowLayout();
 		cp.setLayout(layout);
+		
+		userNameL = new JLabel("用户名", JLabel.CENTER);
+		passwordL = new JLabel("密码", JLabel.CENTER);
+		userNameTF = new JTextField("");
+		passwordTF = new JTextField("");
+		login = new JButton("登录");
+		login.addActionListener(this);
+		register = new JButton("注册");
+		register.addActionListener(this);
+		
+		window = new JPanel(new GridLayout(3, 2, 0, 0));
+		window.setPreferredSize(new Dimension(200, 100));
+		window.setBorder(new EtchedBorder(EtchedBorder.RAISED));
+		window.add(userNameL);
+		window.add(passwordL);
+		window.add(userNameTF);
+		window.add(passwordTF);
+		window.add(login);
+		window.add(register);
+		window.setVisible(true);
+		
+		cp.add(window);
+		setSize(300, 300);
+		setLocationRelativeTo(null);
+		setVisible(true);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 	
 	public void check() {
@@ -50,7 +82,12 @@ public class Login extends JFrame implements ActionListener {
 			System.out.println("数据库操作错误。");
 			e.printStackTrace();
 		}
-		conn.close();
+		try {
+			conn.close();
+		} catch (SQLException e) {
+			System.out.println("数据库关闭错误。");
+			e.printStackTrace();
+		}
 	}
 	
 	public void actionPerformed(ActionEvent e) {
