@@ -176,66 +176,130 @@ public class Services extends JFrame implements ActionListener {
 	public class Hotel extends JPanel implements ActionListener {
 		private String custName;
 		
-		private JPanel hotelReserveP;
-		private JLabel hotelReserveL;
-		private JTextField hotelReserveTF;
-		private JButton hotelReserveB;
+		private JPanel searchHotelP;
+		private JLabel hotelLocationL;
+		private JTextField hotelLocationTF;
+		private JButton searchB;
+		private JPanel hotelResultsP;
+		private JScrollPane resultsSP;
+		private JTable resultsT;
+		private DefaultTableModel resultsTM;
+		private JButton reserveB;
 		
 		public Hotel(String custName) {
-			super(new FlowLayout(FlowLayout.CENTER, 10, 10));
+			super(new FlowLayout(FlowLayout.CENTER, 0, 0));
 			this.custName = custName;
 			setHotelWindow();
 		}
 		
-		void setHotelWindow() {
-			hotelReserveL = new JLabel("预订旅馆所在地");
-			hotelReserveTF = new JTextField(20);
-			hotelReserveB = new JButton("预订");
-			hotelReserveB.addActionListener(this);
-			hotelReserveP = new JPanel(new FlowLayout());
-			hotelReserveP.setPreferredSize(new Dimension(200, 200));
-			hotelReserveP.add(hotelReserveL);
-			hotelReserveP.add(hotelReserveTF);
-			hotelReserveP.add(hotelReserveB);
+		public void setHotelWindow() {
+			hotelLocationL = new JLabel("请输入车辆所在城市");
+			hotelLocationTF = new JTextField("");
+			searchB = new JButton("查询");
+			searchB.addActionListener(this);
+			searchHotelP = new JPanel(new GridLayout(3, 1, 0, 0));
+			searchHotelP.setPreferredSize(new Dimension(200, 200));
+			searchHotelP.add(hotelLocationL);
+			searchHotelP.add(hotelLocationTF);
+			searchHotelP.add(searchB);
 			
-			add(hotelReserveP);
+			resultsTM = new DefaultTableModel();
+			resultsTM.setColumnIdentifiers(new String[] {"地点", "价格", "房间数", "剩余房间数"});
+			resultsT = new JTable(resultsTM) {
+				public boolean isCellEditable(int row, int column) {
+					return false;
+				}
+			};
+			resultsT.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+			resultsT.setFillsViewportHeight(true);
+			resultsSP = new JScrollPane();
+			resultsSP.setLayout(new ScrollPaneLayout());
+			resultsSP.setPreferredSize(new Dimension(500, 300));
+			resultsSP.setViewportView(resultsT);
+			reserveB = new JButton("预订");
+			reserveB.addActionListener(this);
+			reserveB.setEnabled(false);
+			hotelResultsP = new JPanel();
+			hotelResultsP.setPreferredSize(new Dimension(550, 350));
+			hotelResultsP.add(resultsSP);
+			hotelResultsP.add(reserveB);
+			hotelResultsP.setVisible(false);
+			
+			add(searchHotelP);
+			add(hotelResultsP);
+			setVisible(true);
 			setPreferredSize(new Dimension(800, 800));
 		}
 		
 		public void actionPerformed(ActionEvent e) {
-			if(e.getSource() == hotelReserveB) {
+			if(e.getSource() == searchB) {
+				search();
+			}
+			if(e.getSource() == reserveB) {
 				reserve();
 			}
 		}
 		
-		public void reserve() {
+		public void search() {
 			Connection conn = DBInterface.getConnection();
-			String query, insert, update;
-			String location = hotelReserveTF.getText();
+			String query;
+			ResultSet rs;
+			String location = hotelLocationTF.getText();
 			
-			long timeStamp = new java.util.Date().getTime();
-			query = "select numAvail from HOTELS where location = '" + location + "';";
-			insert = "insert into RESERVATIONS (custName, resvType, resvKey) values ('" + custName + "', 2, '" + custName + timeStamp + "');";
-			update = "update HOTELS set numAvail = numAvail - 1 where location = '" + location +"';";
+			query = "select * from HOTELS where location = '" + location + "';";
 			try {
-				ResultSet rs = DBInterface.executeQuery(conn, query);
-				if(!rs.next() || rs.getInt("numAvail") <= 0) {
-					JOptionPane.showMessageDialog(null, "来晚一步", "没有房间了", JOptionPane.WARNING_MESSAGE);
+				rs = DBInterface.executeQuery(conn, query);
+				if(!rs.next()){
+					JOptionPane.showMessageDialog(null, "抱歉", "没找到房", JOptionPane.ERROR_MESSAGE);
 					return;
 				}
-				conn.setAutoCommit(false);
-				DBInterface.executeUpdate(conn, insert);
-				DBInterface.executeUpdate(conn, update);
-				conn.commit();
-				conn.setAutoCommit(true);
+				if(rs.getInt("numAvail") <= 0) {
+					JOptionPane.showMessageDialog(null, "来晚一步", "没房间了", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				String price = rs.getString("price");
+				String numRooms = rs.getString("numRooms");
+				String numAvail = rs.getString("numAvail");
+				resultsTM.addRow(new Object[] {location, price, numRooms, numAvail});
 			} catch(SQLException e) {
 				System.out.println("预订旅馆时数据库操作错误。");
 				e.printStackTrace();
 				return;
 			}
 			DBInterface.closeConnection(conn);
-			JOptionPane.showMessageDialog(null, "房间订好了", "啦啦啦", JOptionPane.WARNING_MESSAGE);
+			hotelResultsP.setVisible(true);
+			reserveB.setEnabled(true);
 			return;
+		}
+		
+		public void reserve() {
+			int i = resultsT.getSelectedRow();
+			if(i != -1) {
+				Object _location = resultsT.getValueAt(i, 0);
+				String location = String.valueOf(_location);
+				
+				Connection conn = DBInterface.getConnection();
+				String insert, update;
+				long timeStamp = new java.util.Date().getTime();
+				insert = "insert into RESERVATIONS (custName, resvType, resvKey) values ('" + custName + "', 2, '" + custName + timeStamp + "');";
+				update = "update HOTELS set numAvail = numAvail - 1 where location = '" + location + "';";
+				try {
+					conn.setAutoCommit(false);
+					DBInterface.executeQuery(conn, insert);
+					DBInterface.executeQuery(conn, update);
+					conn.commit();
+					conn.setAutoCommit(true);
+				} catch(SQLException e) {
+					System.out.println("预订旅馆时数据库操作错误。");
+					e.printStackTrace();
+					return;
+				}
+				DBInterface.closeConnection(conn);
+				JOptionPane.showMessageDialog(null, "订到房间啦", "啦啦啦", JOptionPane.WARNING_MESSAGE);
+				hotelLocationTF.setText("");
+				resultsTM.setRowCount(0);
+				reserveB.setEnabled(false);
+			}
 		}
 	}
 	
@@ -347,7 +411,7 @@ public class Services extends JFrame implements ActionListener {
 				Connection conn = DBInterface.getConnection();
 				String insert, update;
 				long timeStamp = new java.util.Date().getTime();
-				insert = "insert into RESERVATIONS (custName, resvType, resvKey) values ('" + custName + "', 3, '" + custName + timeStamp + "');"
+				insert = "insert into RESERVATIONS (custName, resvType, resvKey) values ('" + custName + "', 3, '" + custName + timeStamp + "');";
 				update = "update CARS set numAvail = numAvail - 1 where location = '" + location + "';";
 				try {
 					conn.setAutoCommit(false);
@@ -356,7 +420,7 @@ public class Services extends JFrame implements ActionListener {
 					conn.commit();
 					conn.setAutoCommit(true);
 				} catch(SQLException e) {
-					System.out.println("订购机票时数据库操作错误。");
+					System.out.println("预订车辆时数据库操作错误。");
 					e.printStackTrace();
 					return;
 				}
