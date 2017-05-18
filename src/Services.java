@@ -434,6 +434,86 @@ public class Services extends JFrame implements ActionListener {
 	}
 	
 	public class Reservation extends JPanel implements ActionListener {
+		private String custName;
+		
+		private JPanel myResvP;
+		private JScrollPane flightResvSP;
+		private JTable flightResvT;
+		private DefaultTableModel flightResvTM;
+		private JScrollPane hotelResvSP;
+		private JTable hotelResvT;
+		private DefaultTableModel hotelResvTM;
+		private JScrollPane carResvSP;
+		private JTable carResvT;
+		private DefaultTableModel carResvTM;
+		
+		public Reservation(String custName) {
+			super(new FlowLayout(FlowLayout.CENTER, 0, 0));
+			this.custName = custName;
+			setResvWindow();
+		}
+		
+		public void setResvWindow() {
+			flightResvTM = new DefaultTableModel();
+			flightResvTM.setColumnIdentifiers(new String[] {"订单号", "始发地", "目的地", "票价"});
+			flightResvT = new JTable(flightResvTM) {
+				public boolean isCellEditable(int row, int column) {
+					return false;
+				}
+			};
+			flightResvT.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+			flightResvT.setFillsViewportHeight(true);
+			flightResvSP = new JScrollPane();
+			flightResvSP.setLayout(new ScrollPaneLayout());
+			flightResvSP.setPreferredSize(new Dimension(200, 300));
+			flightResvSP.setViewportView(flightResvT);
+			
+			hotelResvTM = new DefaultTableModel();
+			hotelResvTM.setColumnIdentifiers(new String[] {"订单号", "地点", "票价"});
+			hotelResvT = new JTable(hotelResvTM) {
+				public boolean isCellEditable(int row, int column) {
+					return false;
+				}
+			};
+			hotelResvT.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+			hotelResvT.setFillsViewportHeight(true);
+			hotelResvSP = new JScrollPane();
+			hotelResvSP.setLayout(new ScrollPaneLayout());
+			hotelResvSP.setPreferredSize(new Dimension(200, 300));
+			hotelResvSP.setViewportView(hotelResvT);
+			
+			carResvTM = new DefaultTableModel();
+			carResvTM.setColumnIdentifiers(new String[] {"订单号", "地点", "票价"});
+			carResvT = new JTable(carResvTM) {
+				public boolean isCellEditable(int row, int column) {
+					return false;
+				}
+			};
+			carResvT.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+			carResvT.setFillsViewportHeight(true);
+			carResvSP = new JScrollPane();
+			carResvSP.setLayout(new ScrollPaneLayout());
+			carResvSP.setPreferredSize(new Dimension(200, 300));
+			carResvSP.setViewportView(carResvT);
+			
+			myResvP = new JPanel();
+			myResvP.setPreferredSize(new Dimension(650, 350));
+			myResvP.add(flightResvSP);
+			myResvP.add(hotelResvSP);
+			myResvP.add(carResvSP);
+			myResvP.setVisible(true);
+			
+			Connection conn = DBInterface.getConnection();
+			String query;
+			ResultSet rs;
+			
+			try {
+				query = "select resvKey, fromCity, arivCity, price" +
+						"from RESERVATIONS, FLIGHTS" +
+						"where custName = '" + custName + "' and resvType = ;";
+			}
+		}
+		
 		public void actionPerformed(ActionEvent e) {
 			
 		}
@@ -449,7 +529,7 @@ public class Services extends JFrame implements ActionListener {
 		flightP = new Flight(userName);
 		hotelP = new Hotel(userName);
 		carP = new Car(userName);
-		reservationP = new Reservation();
+		reservationP = new Reservation(userName);
 		setWindow();
 	}
 	
