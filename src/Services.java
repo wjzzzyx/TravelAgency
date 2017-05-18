@@ -25,7 +25,7 @@ public class Services extends JFrame implements ActionListener {
 	private JButton bookFlight, reserveHotel, reserveCar, myReservation, exit;
 	private JPanel serviceCP;
 	private CardLayout card;
-	private int serviceID;
+	private int serviceID = 3;
 	
 	public class Flight extends JPanel implements ActionListener {
 		private String custName;
@@ -174,22 +174,198 @@ public class Services extends JFrame implements ActionListener {
 	}
 	
 	public class Hotel extends JPanel implements ActionListener {
+		private String custName;
+		
+		private JPanel hotelReserveP;
+		private JLabel hotelReserveL;
+		private JTextField hotelReserveTF;
+		private JButton hotelReserveB;
+		
 		public Hotel(String custName) {
+			super(new FlowLayout(FlowLayout.CENTER, 10, 10));
+			this.custName = custName;
+			setHotelWindow();
+		}
+		
+		void setHotelWindow() {
+			hotelReserveL = new JLabel("预订旅馆所在地");
+			hotelReserveTF = new JTextField(20);
+			hotelReserveB = new JButton("预订");
+			hotelReserveB.addActionListener(this);
+			hotelReserveP = new JPanel(new FlowLayout());
+			hotelReserveP.setPreferredSize(new Dimension(200, 200));
+			hotelReserveP.add(hotelReserveL);
+			hotelReserveP.add(hotelReserveTF);
+			hotelReserveP.add(hotelReserveB);
 			
+			add(hotelReserveP);
+			setPreferredSize(new Dimension(800, 800));
 		}
 		
 		public void actionPerformed(ActionEvent e) {
+			if(e.getSource() == hotelReserveB) {
+				reserve();
+			}
+		}
+		
+		public void reserve() {
+			Connection conn = DBInterface.getConnection();
+			String query, insert, update;
+			String location = hotelReserveTF.getText();
 			
+			long timeStamp = new java.util.Date().getTime();
+			query = "select numAvail from HOTELS where location = '" + location + "';";
+			insert = "insert into RESERVATIONS (custName, resvType, resvKey) values ('" + custName + "', 2, '" + custName + timeStamp + "');";
+			update = "update HOTELS set numAvail = numAvail - 1 where location = '" + location +"';";
+			try {
+				ResultSet rs = DBInterface.executeQuery(conn, query);
+				if(!rs.next() || rs.getInt("numAvail") <= 0) {
+					JOptionPane.showMessageDialog(null, "来晚一步", "没有房间了", JOptionPane.WARNING_MESSAGE);
+					return;
+				}
+				conn.setAutoCommit(false);
+				DBInterface.executeUpdate(conn, insert);
+				DBInterface.executeUpdate(conn, update);
+				conn.commit();
+				conn.setAutoCommit(true);
+			} catch(SQLException e) {
+				System.out.println("预订旅馆时数据库操作错误。");
+				e.printStackTrace();
+				return;
+			}
+			DBInterface.closeConnection(conn);
+			JOptionPane.showMessageDialog(null, "房间订好了", "啦啦啦", JOptionPane.WARNING_MESSAGE);
+			return;
 		}
 	}
 	
 	public class Car extends JPanel implements ActionListener {
+		private String custName;
+		
+		private JPanel searchCarP;
+		private JLabel carLocationL;
+		private JTextField carLocationTF;
+		private JButton searchB;
+		private JPanel carResultsP;
+		private JScrollPane resultsSP;
+		private JTable resultsT;
+		private DefaultTableModel resultsTM;
+		private JButton reserveB;
+		
 		public Car(String custName) {
+			super(new FlowLayout(FlowLayout.CENTER, 0, 0));
+			this.custName = custName;
+			setCarWindow();
+		}
+		
+		public void setCarWindow() {
+			carLocationL = new JLabel("请输入车辆所在城市");
+			carLocationTF = new JTextField("");
+			searchB = new JButton("查询");
+			searchB.addActionListener(this);
+			searchCarP = new JPanel(new GridLayout(3, 1, 0, 0));
+			searchCarP.setPreferredSize(new Dimension(200, 200));
+			searchCarP.add(carLocationL);
+			searchCarP.add(carLocationTF);
+			searchCarP.add(searchB);
 			
+			resultsTM = new DefaultTableModel();
+			resultsTM.setColumnIdentifiers(new String[] {"地点", "价格", "数量", "剩余数量"});
+			resultsT = new JTable(resultsTM) {
+				public boolean isCellEditable(int row, int column) {
+					return false;
+				}
+			};
+			resultsT.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+			resultsT.setFillsViewportHeight(true);
+			resultsSP = new JScrollPane();
+			resultsSP.setLayout(new ScrollPaneLayout());
+			resultsSP.setPreferredSize(new Dimension(500, 300));
+			resultsSP.setViewportView(resultsT);
+			reserveB = new JButton("预订");
+			reserveB.addActionListener(this);
+			reserveB.setEnabled(false);
+			carResultsP = new JPanel();
+			carResultsP.setPreferredSize(new Dimension(550, 350));
+			carResultsP.add(resultsSP);
+			carResultsP.add(reserveB);
+			carResultsP.setVisible(false);
+			
+			add(searchCarP);
+			add(carResultsP);
+			setVisible(true);
+			setPreferredSize(new Dimension(800, 800));
 		}
 		
 		public void actionPerformed(ActionEvent e) {
+			if(e.getSource() == searchB) {
+				search();
+			}
+			if(e.getSource() == reserveB) {
+				reserve();
+			}
+		}
+		
+		public void search() {
+			Connection conn = DBInterface.getConnection();
+			String query;
+			ResultSet rs;
+			String location = carLocationTF.getText();
 			
+			query = "select * from CARS where location = '" + location + "';";
+			try {
+				rs = DBInterface.executeQuery(conn, query);
+				if(!rs.next()){
+					JOptionPane.showMessageDialog(null, "抱歉", "没找到车", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				if(rs.getInt("numAvail") <= 0) {
+					JOptionPane.showMessageDialog(null, "来晚一步", "没车了", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				String price = rs.getString("price");
+				String numCars = rs.getString("numCars");
+				String numAvail = rs.getString("numAvail");
+				resultsTM.addRow(new Object[] {location, price, numCars, numAvail});
+			} catch(SQLException e) {
+				System.out.println("预订车辆时数据库操作错误。");
+				e.printStackTrace();
+				return;
+			}
+			DBInterface.closeConnection(conn);
+			carResultsP.setVisible(true);
+			reserveB.setEnabled(true);
+			return;
+		}
+		
+		public void reserve() {
+			int i = resultsT.getSelectedRow();
+			if(i != -1) {
+				Object _location = resultsT.getValueAt(i, 0);
+				String location = String.valueOf(_location);
+				
+				Connection conn = DBInterface.getConnection();
+				String insert, update;
+				long timeStamp = new java.util.Date().getTime();
+				insert = "insert into RESERVATIONS (custName, resvType, resvKey) values ('" + custName + "', 3, '" + custName + timeStamp + "');"
+				update = "update CARS set numAvail = numAvail - 1 where location = '" + location + "';";
+				try {
+					conn.setAutoCommit(false);
+					DBInterface.executeQuery(conn, insert);
+					DBInterface.executeQuery(conn, update);
+					conn.commit();
+					conn.setAutoCommit(true);
+				} catch(SQLException e) {
+					System.out.println("订购机票时数据库操作错误。");
+					e.printStackTrace();
+					return;
+				}
+				DBInterface.closeConnection(conn);
+				JOptionPane.showMessageDialog(null, "嘀", "学生卡", JOptionPane.WARNING_MESSAGE);
+				carLocationTF.setText("");
+				resultsTM.setRowCount(0);
+				reserveB.setEnabled(false);
+			}
 		}
 	}
 	
@@ -219,19 +395,19 @@ public class Services extends JFrame implements ActionListener {
 		
 		menu = new JPanel(new GridLayout(1, 0, 20, 10));
 		bookFlight = new JButton("预订航班");
-		bookFlight.setPreferredSize(new Dimension(200, 100));
+		bookFlight.setPreferredSize(new Dimension(180, 80));
 		bookFlight.addActionListener(this);
 		reserveHotel = new JButton("预订旅馆");
-		reserveHotel.setPreferredSize(new Dimension(200, 100));
+		reserveHotel.setPreferredSize(new Dimension(180, 80));
 		reserveHotel.addActionListener(this);
 		reserveCar = new JButton("预订汽车");
-		reserveCar.setPreferredSize(new Dimension(200, 100));
+		reserveCar.setPreferredSize(new Dimension(180, 80));
 		reserveCar.addActionListener(this);
 		myReservation = new JButton("我的订单");
-		myReservation.setPreferredSize(new Dimension(200, 100));
+		myReservation.setPreferredSize(new Dimension(180, 80));
 		myReservation.addActionListener(this);
 		exit = new JButton("退出");
-		exit.setPreferredSize(new Dimension(200, 100));
+		exit.setPreferredSize(new Dimension(180, 80));
 		exit.addActionListener(this);
 		menu.add(bookFlight);
 		menu.add(reserveHotel);
@@ -262,21 +438,25 @@ public class Services extends JFrame implements ActionListener {
 		if(e.getSource() == bookFlight) {
 			if(serviceID != 0) {
 				card.show(serviceCP, "0");
+				serviceID = 0;
 			}
 		}
 		if(e.getSource() == reserveHotel) {
 			if(serviceID != 1) {
 				card.show(serviceCP, "1");
+				serviceID = 1;
 			}
 		}
 		if(e.getSource() == reserveCar) {
 			if(serviceID != 2) {
 				card.show(serviceCP, "2");
+				serviceID = 2;
 			}
 		}
 		if(e.getSource() == myReservation) {
 			if(serviceID != 3) {
 				card.show(serviceCP, "3");
+				serviceID = 3;
 			}
 		}
 		if(e.getSource() == exit) {
