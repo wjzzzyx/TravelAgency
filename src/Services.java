@@ -25,7 +25,7 @@ public class Services extends JFrame implements ActionListener {
 	private JButton bookFlight, reserveHotel, reserveCar, myReservation, exit;
 	private JPanel serviceCP;
 	private CardLayout card;
-	private int serviceID = 3;
+	private int serviceID;
 	
 	public class Flight extends JPanel implements ActionListener {
 		private String custName;
@@ -150,7 +150,7 @@ public class Services extends JFrame implements ActionListener {
 				Connection conn = DBInterface.getConnection();
 				String insert, update;
 				long timeStamp = new java.util.Date().getTime();
-				insert = "insert into RESERVATIONS (custName, resvType, resvKey) values ('" + custName + "', 1, '" + custName + timeStamp + "');";
+				insert = "insert into RESERVATIONS (custName, resvType, resvKey, info) values ('" + custName + "', 1, '" + custName + timeStamp + "', '" + flightNum + "');";
 				update = "update FLIGHTS set numAvail = " + (numAvail - 1) + " where flightNum = '" + flightNum + "';";
 				try {
 					conn.setAutoCommit(false);
@@ -193,7 +193,7 @@ public class Services extends JFrame implements ActionListener {
 		}
 		
 		public void setHotelWindow() {
-			hotelLocationL = new JLabel("请输入车辆所在城市");
+			hotelLocationL = new JLabel("请输入旅馆所在城市");
 			hotelLocationTF = new JTextField("");
 			searchB = new JButton("查询");
 			searchB.addActionListener(this);
@@ -281,12 +281,12 @@ public class Services extends JFrame implements ActionListener {
 				Connection conn = DBInterface.getConnection();
 				String insert, update;
 				long timeStamp = new java.util.Date().getTime();
-				insert = "insert into RESERVATIONS (custName, resvType, resvKey) values ('" + custName + "', 2, '" + custName + timeStamp + "');";
+				insert = "insert into RESERVATIONS (custName, resvType, resvKey, info) values ('" + custName + "', 2, '" + custName + timeStamp + "', '" + location + "');";
 				update = "update HOTELS set numAvail = numAvail - 1 where location = '" + location + "';";
 				try {
 					conn.setAutoCommit(false);
-					DBInterface.executeQuery(conn, insert);
-					DBInterface.executeQuery(conn, update);
+					DBInterface.executeUpdate(conn, insert);
+					DBInterface.executeUpdate(conn, update);
 					conn.commit();
 					conn.setAutoCommit(true);
 				} catch(SQLException e) {
@@ -411,12 +411,12 @@ public class Services extends JFrame implements ActionListener {
 				Connection conn = DBInterface.getConnection();
 				String insert, update;
 				long timeStamp = new java.util.Date().getTime();
-				insert = "insert into RESERVATIONS (custName, resvType, resvKey) values ('" + custName + "', 3, '" + custName + timeStamp + "');";
+				insert = "insert into RESERVATIONS (custName, resvType, resvKey, info) values ('" + custName + "', 3, '" + custName + timeStamp + "', '" + location + "');";
 				update = "update CARS set numAvail = numAvail - 1 where location = '" + location + "';";
 				try {
 					conn.setAutoCommit(false);
-					DBInterface.executeQuery(conn, insert);
-					DBInterface.executeQuery(conn, update);
+					DBInterface.executeUpdate(conn, insert);
+					DBInterface.executeUpdate(conn, update);
 					conn.commit();
 					conn.setAutoCommit(true);
 				} catch(SQLException e) {
@@ -455,7 +455,7 @@ public class Services extends JFrame implements ActionListener {
 		
 		public void setResvWindow() {
 			flightResvTM = new DefaultTableModel();
-			flightResvTM.setColumnIdentifiers(new String[] {"订单号", "始发地", "目的地", "票价"});
+			flightResvTM.setColumnIdentifiers(new String[] {"订单号", "票号", "始发地", "目的地", "票价"});
 			flightResvT = new JTable(flightResvTM) {
 				public boolean isCellEditable(int row, int column) {
 					return false;
@@ -465,7 +465,7 @@ public class Services extends JFrame implements ActionListener {
 			flightResvT.setFillsViewportHeight(true);
 			flightResvSP = new JScrollPane();
 			flightResvSP.setLayout(new ScrollPaneLayout());
-			flightResvSP.setPreferredSize(new Dimension(200, 300));
+			flightResvSP.setPreferredSize(new Dimension(500, 200));
 			flightResvSP.setViewportView(flightResvT);
 			
 			hotelResvTM = new DefaultTableModel();
@@ -479,7 +479,7 @@ public class Services extends JFrame implements ActionListener {
 			hotelResvT.setFillsViewportHeight(true);
 			hotelResvSP = new JScrollPane();
 			hotelResvSP.setLayout(new ScrollPaneLayout());
-			hotelResvSP.setPreferredSize(new Dimension(200, 300));
+			hotelResvSP.setPreferredSize(new Dimension(500, 200));
 			hotelResvSP.setViewportView(hotelResvT);
 			
 			carResvTM = new DefaultTableModel();
@@ -493,11 +493,11 @@ public class Services extends JFrame implements ActionListener {
 			carResvT.setFillsViewportHeight(true);
 			carResvSP = new JScrollPane();
 			carResvSP.setLayout(new ScrollPaneLayout());
-			carResvSP.setPreferredSize(new Dimension(200, 300));
+			carResvSP.setPreferredSize(new Dimension(500, 200));
 			carResvSP.setViewportView(carResvT);
 			
 			myResvP = new JPanel();
-			myResvP.setPreferredSize(new Dimension(650, 350));
+			myResvP.setPreferredSize(new Dimension(550, 650));
 			myResvP.add(flightResvSP);
 			myResvP.add(hotelResvSP);
 			myResvP.add(carResvSP);
@@ -508,10 +508,48 @@ public class Services extends JFrame implements ActionListener {
 			ResultSet rs;
 			
 			try {
-				query = "select resvKey, fromCity, arivCity, price" +
-						"from RESERVATIONS, FLIGHTS" +
-						"where custName = '" + custName + "' and resvType = ;";
+				query = "select resvKey, flightNum, fromCity, arivCity, price " +
+						"from RESERVATIONS, FLIGHTS " +
+						"where custName = '" + custName + "' and resvType = 1 and flightNum = info;";
+				rs = DBInterface.executeQuery(conn, query);
+				while(rs.next()) {
+					String resvKey = rs.getString("resvKey");
+					String fromCity = rs.getString("fromCity");
+					String arivCity = rs.getString("arivCity");
+					String price = rs.getString("price");
+					flightResvTM.addRow(new Object[] {resvKey, fromCity, arivCity, price});
+				}
+				
+				query = "select resvKey, location, price " +
+						"from RESERVATIONS, HOTELS " +
+						"where custName = '" + custName + "' and resvType = 2 and location = info;";
+				rs = DBInterface.executeQuery(conn, query);
+				while(rs.next()) {
+					String resvKey = rs.getString("resvKey");
+					String location = rs.getString("location");
+					String price = rs.getString("price");
+					hotelResvTM.addRow(new Object[] {resvKey, location, price});
+				}
+				
+				query = "select resvKey, location, price " +
+						"from RESERVATIONS, CARS " +
+						"where custName = '" + custName + "' and resvType = 3 and location = info;";
+				rs = DBInterface.executeQuery(conn, query);
+				while(rs.next()) {
+					String resvKey = rs.getString("resvKey");
+					String location = rs.getString("location");
+					String price = rs.getString("price");
+					carResvTM.addRow(new Object[] {resvKey, location, price});
+				}
+			} catch(SQLException e) {
+				System.out.println("显示订单时数据库操作错误。");
+				e.printStackTrace();
 			}
+			DBInterface.closeConnection(conn);
+			
+			add(myResvP);
+			setVisible(true);
+			setPreferredSize(new Dimension(800, 800));
 		}
 		
 		public void actionPerformed(ActionEvent e) {
@@ -569,6 +607,8 @@ public class Services extends JFrame implements ActionListener {
 		serviceCP.add("3", reservationP);
 		serviceCP.setPreferredSize(new Dimension(600, 600));
 		serviceCP.setVisible(true);
+		card.show(serviceCP, "3");
+		serviceID = 3;
 		
 		cp.add(menu);
 		cp.add(serviceCP);
