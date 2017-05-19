@@ -19,6 +19,11 @@ import javax.swing.ScrollPaneLayout;
 import javax.swing.JTable;
 import javax.swing.table.*;
 
+import java.util.LinkedList;
+import java.util.ListIterator;
+import java.util.Queue;
+import java.util.Stack;
+
 public class Services extends JFrame implements ActionListener {
 	private Container cp;
 	private JPanel menu;
@@ -447,6 +452,14 @@ public class Services extends JFrame implements ActionListener {
 		private JTable carResvT;
 		private DefaultTableModel carResvTM;
 		
+		private JLabel checkL, fromL, toL;
+		private JTextField fromTF, toTF;
+		private JButton checkB;
+		private JLabel resultL;
+		private JTextField resultTF;
+		private LinkedList<String> route = new LinkedList<String>();
+		private LinkedList<String> visited = new LinkedList<String>();
+		
 		public Reservation(String custName) {
 			super(new FlowLayout(FlowLayout.CENTER, 0, 0));
 			this.custName = custName;
@@ -496,11 +509,29 @@ public class Services extends JFrame implements ActionListener {
 			carResvSP.setPreferredSize(new Dimension(500, 200));
 			carResvSP.setViewportView(carResvT);
 			
+			checkL = new JLabel("检查路线完整性");
+			fromL = new JLabel("出发地");
+			fromTF = new JTextField(20);
+			toL = new JLabel("目的地");
+			toTF = new JTextField(20);
+			checkB = new JButton("检查");
+			checkB.addActionListener(this);
+			resultL = new JLabel("结果");
+			resultTF = new JTextField(40);
+			
 			myResvP = new JPanel();
-			myResvP.setPreferredSize(new Dimension(550, 650));
+			myResvP.setPreferredSize(new Dimension(500, 920));
 			myResvP.add(flightResvSP);
 			myResvP.add(hotelResvSP);
 			myResvP.add(carResvSP);
+			myResvP.add(checkL);
+			myResvP.add(fromL);
+			myResvP.add(fromTF);
+			myResvP.add(toL);
+			myResvP.add(toTF);
+			myResvP.add(checkB);
+			myResvP.add(resultL);
+			myResvP.add(resultTF);
 			myResvP.setVisible(true);
 			
 			Connection conn = DBInterface.getConnection();
@@ -549,11 +580,61 @@ public class Services extends JFrame implements ActionListener {
 			
 			add(myResvP);
 			setVisible(true);
-			setPreferredSize(new Dimension(800, 800));
+			setPreferredSize(new Dimension(800, 920));
 		}
 		
 		public void actionPerformed(ActionEvent e) {
+			if(e.getSource() == checkB) {
+				check();
+			}
+		}
+		
+		public void check() {
+			String fromCity = fromTF.getText();
+			String arivCity = toTF.getText();
 			
+			boolean found = false;
+			String result = "";
+			
+			found = DFS(fromCity, arivCity);
+			if(found) {
+				for(ListIterator<String> it = route.listIterator(); it.hasNext();) {
+					String city = it.next();
+					result += city;
+					if(it.hasNext())
+						result += "-->";
+				}
+				JOptionPane.showMessageDialog(null, "找到一条路线", "啦啦啦", JOptionPane.WARNING_MESSAGE);
+				resultTF.setText(result);
+			}
+			else {
+				JOptionPane.showMessageDialog(null, "没找到路线", "呜呜呜", JOptionPane.WARNING_MESSAGE);
+			}
+		}
+		
+		public boolean DFS(String city, String target) {
+			route.add(city);
+			if(city.matches(target)) {
+				return true;
+			}
+			else {
+				Connection conn = DBInterface.getConnection();
+				String query = "select arivCity from RESERVATIONS, FLIGHTS where custName = '" + custName + "' and resvType = 1 and info = flightNum and fromCity = '" + city + "';";
+				try {
+					ResultSet rs = DBInterface.executeQuery(conn, query);
+					while(rs.next()) {
+						String next = rs.getString("arivCity");
+						if(!visited.contains(next) && DFS(next, target))
+							return true;
+					}
+					route.removeLast();
+					return false;
+				} catch(SQLException e) {
+					System.out.println("检查路径完整性时数据库操作错误。");
+					e.printStackTrace();
+				}
+				return false;
+			}
 		}
 	}
 	
@@ -605,7 +686,7 @@ public class Services extends JFrame implements ActionListener {
 		serviceCP.add("1", hotelP);
 		serviceCP.add("2", carP);
 		serviceCP.add("3", reservationP);
-		serviceCP.setPreferredSize(new Dimension(600, 600));
+		serviceCP.setPreferredSize(new Dimension(800, 920));
 		serviceCP.setVisible(true);
 		card.show(serviceCP, "3");
 		serviceID = 3;
@@ -641,6 +722,7 @@ public class Services extends JFrame implements ActionListener {
 			if(serviceID != 3) {
 				card.show(serviceCP, "3");
 				serviceID = 3;
+				reservationP.setResvWindow();
 			}
 		}
 		if(e.getSource() == exit) {
